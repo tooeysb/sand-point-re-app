@@ -1127,7 +1127,12 @@
                                     </label>
                                     <div class="input-group">
                                         <span class="input-prefix">$</span>
-                                        <input type="number" x-model.number="loan.amount" class="input-premium w-full has-prefix" :placeholder="loan.ltc_ratio ? 'Auto' : ''">
+                                        <input type="text"
+                                               :value="loan.amount ? loan.amount.toLocaleString() : ''"
+                                               @input="loan.amount = parseFloat($event.target.value.replace(/,/g, '')) || null"
+                                               @blur="$event.target.value = loan.amount ? loan.amount.toLocaleString() : ''"
+                                               class="input-premium w-full has-prefix"
+                                               :placeholder="loan.ltc_ratio ? 'Auto' : ''">
                                     </div>
                                 </div>
                                 <div>
@@ -1530,10 +1535,8 @@ function modelEditor() {
                 if (data.loans) this.loans = data.loans.map(ln => ({ ...ln, _persisted: true }));
                 if (data.return_metrics) this.metrics = data.return_metrics;
                 if (data.property_id) await this.loadProperty(data.property_id);
-                // Auto-calculate if no metrics exist yet
-                if (!data.return_metrics || Object.keys(data.return_metrics).length === 0) {
-                    await this.calculateModel();
-                }
+                // Always recalculate to ensure fresh metrics
+                await this.calculateModel();
             } catch (error) { this.error = 'Failed to load scenario: ' + error.message; }
             finally { this.loading = false; }
         },

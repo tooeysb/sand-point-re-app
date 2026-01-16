@@ -55,6 +55,11 @@ class CashFlowInput(BaseModel):
     io_months: int = 120
     amortization_years: int = 30
 
+    # Waterfall (optional for LP/GP returns)
+    lp_share: float = 0.90
+    gp_share: float = 0.10
+    pref_return: float = 0.05
+
 
 class ReturnMetrics(BaseModel):
     """Calculated return metrics."""
@@ -138,6 +143,47 @@ async def calculate_cashflows(inputs: CashFlowInput):
         except Exception:
             pass  # Leveraged IRR may not converge
 
+    # Calculate LP/GP returns using waterfall
+    lp_irr_val = None
+    lp_multiple_val = None
+    gp_irr_val = None
+    gp_multiple_val = None
+
+    # Use leveraged cash flows for waterfall if we have debt, otherwise unleveraged
+    project_cf = leveraged_cf if (inputs.loan_amount and inputs.loan_amount > 0) else unleveraged_cf
+    total_equity = inputs.purchase_price + inputs.closing_costs - (inputs.loan_amount or 0)
+
+    if total_equity > 0:
+        try:
+            distributions = waterfall.calculate_waterfall_distributions(
+                leveraged_cash_flows=project_cf,
+                dates=dates,
+                total_equity=total_equity,
+                lp_share=inputs.lp_share,
+                gp_share=inputs.gp_share,
+                pref_return=inputs.pref_return,
+            )
+
+            lp_equity = total_equity * inputs.lp_share
+            gp_equity = total_equity * inputs.gp_share
+
+            lp_cf = waterfall.extract_lp_cash_flows(distributions, lp_equity)
+            gp_cf = waterfall.extract_gp_cash_flows(distributions, gp_equity)
+
+            try:
+                lp_irr_val = irr.calculate_xirr(lp_cf, dates)
+                lp_multiple_val = irr.calculate_multiple(lp_cf)
+            except Exception:
+                pass
+
+            try:
+                gp_irr_val = irr.calculate_xirr(gp_cf, dates)
+                gp_multiple_val = irr.calculate_multiple(gp_cf)
+            except Exception:
+                pass
+        except Exception:
+            pass  # Waterfall calculation may fail
+
     # Annualize cash flows
     annual_cfs = cashflow.annualize_cash_flows(monthly_cfs)
 
@@ -149,6 +195,10 @@ async def calculate_cashflows(inputs: CashFlowInput):
             leveraged_irr=leveraged_irr_val,
             leveraged_multiple=leveraged_multiple_val,
             leveraged_profit=leveraged_profit_val,
+            lp_irr=lp_irr_val,
+            lp_multiple=lp_multiple_val,
+            gp_irr=gp_irr_val,
+            gp_multiple=gp_multiple_val,
         ),
         annual_cashflows=annual_cfs,
         monthly_cashflows=monthly_cfs,
