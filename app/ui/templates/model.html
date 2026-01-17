@@ -1657,7 +1657,7 @@
 <script>
 function modelEditor() {
     return {
-        activeTab: 'assumptions',
+        activeTab: localStorage.getItem('modelEditorTab') || 'assumptions',
         loading: false,
         cashflowView: 'annual',
         error: null,
@@ -1958,6 +1958,7 @@ function modelEditor() {
 
         switchTab(tabId) {
             this.activeTab = tabId;
+            localStorage.setItem('modelEditorTab', tabId);
             // Auto-calculate when switching to returns or cashflows tabs if no data yet
             if ((tabId === 'returns' || tabId === 'cashflows') &&
                 Object.keys(this.metrics).length === 0 &&
