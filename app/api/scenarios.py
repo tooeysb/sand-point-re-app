@@ -137,8 +137,27 @@ class ScenarioUpdate(BaseModel):
     closing_costs: Optional[float] = None
     exit_cap_rate: Optional[float] = None
     sales_cost_percent: Optional[float] = None
-    operating_assumptions: Optional[dict] = None
-    waterfall_structure: Optional[dict] = None
+
+    # Operating Assumptions (individual fields to match frontend)
+    market_rent_psf: Optional[float] = None
+    vacancy_rate: Optional[float] = None
+    collection_loss: Optional[float] = None
+    fixed_opex_psf: Optional[float] = None
+    variable_opex_psf: Optional[float] = None
+    management_fee_percent: Optional[float] = None
+    property_tax_amount: Optional[float] = None
+    property_tax_millage: Optional[float] = None
+    capex_reserve_psf: Optional[float] = None
+    revenue_growth: Optional[float] = None
+    expense_growth: Optional[float] = None
+
+    # Waterfall (individual fields to match frontend)
+    lp_share: Optional[float] = None
+    gp_share: Optional[float] = None
+    pref_return: Optional[float] = None
+    compound_monthly: Optional[bool] = None
+
+    # Nested data
     leases: Optional[List[LeaseInput]] = None
     loans: Optional[List[LoanInput]] = None
 
@@ -668,11 +687,42 @@ async def update_scenario(
     if not db_scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
 
-    # Update scalar fields (exclude loans and leases - handled separately)
+    # Update scalar fields (exclude loans, leases, and bundled fields - handled separately)
     update_data = scenario_data.model_dump(exclude_unset=True)
     loans_data = update_data.pop("loans", None)
     leases_data = update_data.pop("leases", None)
 
+    # Operating assumption fields that get bundled into operating_assumptions dict
+    op_assumption_fields = [
+        "market_rent_psf", "vacancy_rate", "collection_loss", "fixed_opex_psf",
+        "variable_opex_psf", "management_fee_percent", "property_tax_amount",
+        "property_tax_millage", "capex_reserve_psf", "revenue_growth", "expense_growth"
+    ]
+
+    # Waterfall fields that get bundled into waterfall_structure dict
+    waterfall_fields = ["lp_share", "gp_share", "pref_return", "compound_monthly"]
+
+    # Extract and bundle operating assumptions
+    op_updates = {}
+    for field in op_assumption_fields:
+        if field in update_data:
+            op_updates[field] = update_data.pop(field)
+
+    if op_updates:
+        existing_op = db_scenario.operating_assumptions or {}
+        db_scenario.operating_assumptions = {**existing_op, **op_updates}
+
+    # Extract and bundle waterfall structure
+    wf_updates = {}
+    for field in waterfall_fields:
+        if field in update_data:
+            wf_updates[field] = update_data.pop(field)
+
+    if wf_updates:
+        existing_wf = db_scenario.waterfall_structure or {}
+        db_scenario.waterfall_structure = {**existing_wf, **wf_updates}
+
+    # Update remaining scalar fields directly on the model
     for field, value in update_data.items():
         setattr(db_scenario, field, value)
 
