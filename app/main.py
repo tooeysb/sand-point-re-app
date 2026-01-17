@@ -99,3 +99,11 @@ async def forgot_password_page(request: Request):
 async def reset_password_page(request: Request):
     """Render the reset password page."""
     return templates.TemplateResponse("auth/reset-password.html", {"request": request})
+
+
+# === Admin Page Routes ===
+
+@app.get("/admin/users", response_class=HTMLResponse)
+async def admin_users_page(request: Request):
+    """Render the admin users management page."""
+    return templates.TemplateResponse("admin/users.html", {"request": request})
