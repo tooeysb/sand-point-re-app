@@ -121,6 +121,47 @@ def _xnpv_derivative(
     return dxnpv
 
 
+def _try_xirr_with_guess(
+    cash_flows: List[float], dates: List[date], guess: float
+) -> Optional[float]:
+    """
+    Try to calculate XIRR with a specific initial guess.
+
+    Returns the rate if successful, None if it fails.
+    """
+    rate = guess
+
+    for _ in range(MAX_ITERATIONS):
+        try:
+            xnpv = calculate_xnpv(cash_flows, dates, rate)
+            dxnpv = _xnpv_derivative(cash_flows, dates, rate)
+
+            # Skip if derivative is too small
+            if abs(dxnpv) < TOLERANCE:
+                return None
+
+            new_rate = rate - xnpv / dxnpv
+
+            # Check for convergence
+            if abs(new_rate - rate) < TOLERANCE:
+                # Validate the result is reasonable (-100% to 1000%)
+                if -1.0 < new_rate < 10.0:
+                    return new_rate
+                return None
+
+            # Prevent rate from going too extreme
+            if new_rate < -0.99:
+                new_rate = -0.99
+            elif new_rate > 10.0:
+                new_rate = 10.0
+
+            rate = new_rate
+        except (ZeroDivisionError, OverflowError):
+            return None
+
+    return None
+
+
 def calculate_xirr(
     cash_flows: List[float], dates: List[date], guess: float = DEFAULT_GUESS
 ) -> float:
@@ -128,6 +169,7 @@ def calculate_xirr(
     Calculate XIRR (IRR with specific dates).
 
     Matches Excel's XIRR() function behavior for irregular cash flows.
+    Uses multiple initial guesses to improve robustness.
 
     Args:
         cash_flows: Array of cash flows
@@ -152,21 +194,42 @@ def calculate_xirr(
     if not has_positive or not has_negative:
         raise ValueError("Cash flows must contain both positive and negative values")
 
-    rate = guess
+    # Try multiple guesses to find a solution
+    guesses = [guess, 0.05, 0.1, 0.15, 0.2, 0.01, -0.05, 0.3, 0.5]
 
-    for _ in range(MAX_ITERATIONS):
-        xnpv = calculate_xnpv(cash_flows, dates, rate)
-        dxnpv = _xnpv_derivative(cash_flows, dates, rate)
+    for g in guesses:
+        result = _try_xirr_with_guess(cash_flows, dates, g)
+        if result is not None:
+            return result
 
-        if abs(dxnpv) < TOLERANCE:
-            raise ValueError("XIRR calculation failed: derivative too small")
+    # If all guesses failed, try a bisection approach
+    # Find a bracket where XNPV changes sign
+    low, high = -0.99, 1.0
+    xnpv_low = calculate_xnpv(cash_flows, dates, low)
+    xnpv_high = calculate_xnpv(cash_flows, dates, high)
 
-        new_rate = rate - xnpv / dxnpv
+    if xnpv_low * xnpv_high > 0:
+        # Try expanding the bracket
+        for h in [2.0, 5.0, 10.0]:
+            xnpv_high = calculate_xnpv(cash_flows, dates, h)
+            if xnpv_low * xnpv_high < 0:
+                high = h
+                break
 
-        if abs(new_rate - rate) < TOLERANCE:
-            return new_rate
-
-        rate = new_rate
+    if xnpv_low * xnpv_high < 0:
+        # Bisection method
+        for _ in range(100):
+            mid = (low + high) / 2
+            xnpv_mid = calculate_xnpv(cash_flows, dates, mid)
+            if abs(xnpv_mid) < TOLERANCE:
+                return mid
+            if xnpv_low * xnpv_mid < 0:
+                high = mid
+                xnpv_high = xnpv_mid
+            else:
+                low = mid
+                xnpv_low = xnpv_mid
+        return (low + high) / 2
 
     raise ValueError("XIRR calculation did not converge")
 
