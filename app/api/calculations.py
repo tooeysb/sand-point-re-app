@@ -15,6 +15,16 @@ from app.calculations import irr, cashflow, waterfall
 router = APIRouter()
 
 
+class WaterfallHurdleInput(BaseModel):
+    """Input for a single waterfall hurdle tier."""
+
+    name: str = "Hurdle"
+    pref_return: float = 0.05  # Annual preferred return rate
+    lp_split: float = 0.90  # LP's share at this tier
+    gp_split: float = 0.10  # GP's share at this tier
+    gp_promote: float = 0.0  # GP promote percentage
+
+
 class CashFlowInput(BaseModel):
     """Input for cash flow calculation."""
 
@@ -59,6 +69,16 @@ class CashFlowInput(BaseModel):
     lp_share: float = 0.90
     gp_share: float = 0.10
     pref_return: float = 0.05
+    compound_monthly: bool = False
+
+    # Multi-hurdle waterfall configuration
+    # If use_multi_hurdle is True, uses the 225 Worth Ave default structure
+    # Otherwise uses simple single-tier waterfall
+    use_multi_hurdle: bool = True
+    hurdles: Optional[List[WaterfallHurdleInput]] = None
+    final_lp_split: float = 0.75
+    final_gp_split: float = 0.0833
+    final_gp_promote: float = 0.1667
 
 
 class ReturnMetrics(BaseModel):
@@ -155,6 +175,47 @@ async def calculate_cashflows(inputs: CashFlowInput):
 
     if total_equity > 0:
         try:
+            # Build hurdle configuration
+            hurdle_list = None
+            final_split = None
+
+            if inputs.use_multi_hurdle:
+                if inputs.hurdles:
+                    # Use custom hurdles if provided
+                    hurdle_list = [
+                        waterfall.WaterfallHurdle(
+                            name=h.name,
+                            pref_return=h.pref_return,
+                            lp_split=h.lp_split,
+                            gp_split=h.gp_split,
+                            gp_promote=h.gp_promote,
+                        )
+                        for h in inputs.hurdles
+                    ]
+                # If no custom hurdles, will use DEFAULT_HURDLES from waterfall module
+
+                final_split = {
+                    "lp_split": inputs.final_lp_split,
+                    "gp_split": inputs.final_gp_split,
+                    "gp_promote": inputs.final_gp_promote,
+                }
+            else:
+                # Use simple single-tier waterfall
+                hurdle_list = [
+                    waterfall.WaterfallHurdle(
+                        name="Single Hurdle",
+                        pref_return=inputs.pref_return,
+                        lp_split=inputs.lp_share,
+                        gp_split=inputs.gp_share,
+                        gp_promote=0.0,
+                    )
+                ]
+                final_split = {
+                    "lp_split": inputs.lp_share,
+                    "gp_split": inputs.gp_share,
+                    "gp_promote": 0.0,
+                }
+
             distributions = waterfall.calculate_waterfall_distributions(
                 leveraged_cash_flows=project_cf,
                 dates=dates,
@@ -162,6 +223,9 @@ async def calculate_cashflows(inputs: CashFlowInput):
                 lp_share=inputs.lp_share,
                 gp_share=inputs.gp_share,
                 pref_return=inputs.pref_return,
+                compound_monthly=inputs.compound_monthly,
+                hurdles=hurdle_list,
+                final_split=final_split,
             )
 
             lp_equity = total_equity * inputs.lp_share
