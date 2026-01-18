@@ -427,3 +427,63 @@ All IRRs are now within **0.04% - 0.15%** of Excel targets. Remaining minor vari
 | Loan Amount | $23,535K | **$16,937K** |
 | Interest Rate | 5.25% | 5.25% |
 | Acquisition Date | - | 2026-03-31 |
+
+---
+
+## Pre-Deployment Testing (REQUIRED)
+
+### Automated Testing System
+
+Every deployment to production MUST pass the Excel parity tests. The following safeguards are in place:
+
+#### 1. Git Pre-Push Hook
+A git hook automatically runs Excel parity tests when pushing to Heroku:
+```bash
+git push heroku main  # Tests run automatically before push
+```
+
+If tests fail, the push is blocked. To install the hook on a new machine:
+```bash
+./scripts/setup-hooks.sh
+```
+
+#### 2. Manual Pre-Deploy Check
+Run tests manually before deployment:
+```bash
+./scripts/pre-deploy-check.sh        # Auto-detect API
+./scripts/pre-deploy-check.sh local  # Test local API
+./scripts/pre-deploy-check.sh prod   # Test production API
+```
+
+Or run pytest directly:
+```bash
+pytest tests/test_excel_parity_critical.py -v
+```
+
+#### 3. GitHub Actions CI
+Tests run automatically on every push to main and on pull requests.
+Check the Actions tab for test results.
+
+### Test File Location
+```
+tests/test_excel_parity_critical.py
+```
+
+### What Gets Tested
+| Test | Expected Value | Tolerance |
+|------|----------------|-----------|
+| Unleveraged IRR | 8.57% | ±0.30% |
+| Leveraged IRR | 10.09% | ±0.30% |
+| LP IRR | 9.39% | ±0.30% |
+| GP IRR | 15.02% | ±0.30% |
+| Month 1 NOI | $158.97K | ±$0.5K |
+| Month 1 Interest | $73.09K | ±$0.5K |
+| Month 120 NOI | $247.80K | ±$0.5K |
+| Exit Proceeds | $60,980.82K | ±$50K |
+
+### Emergency Bypass (NOT RECOMMENDED)
+If you absolutely must deploy without tests:
+```bash
+git push --no-verify heroku main
+```
+**WARNING:** Only use in emergencies. Document why tests were bypassed.
