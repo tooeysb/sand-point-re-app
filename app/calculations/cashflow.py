@@ -448,9 +448,12 @@ def generate_cash_flows(
     cash_flows = []
 
     # First pass: calculate all periods to get forward NOI for exit
+    # IMPORTANT: We need to calculate 12 extra months beyond hold period
+    # to get the actual forward NOI for exit valuation (Excel sums months 121-132)
     period_data = []
+    extended_periods = hold_period_months + 12  # Calculate through month 132 for forward NOI
 
-    for period in range(hold_period_months + 1):
+    for period in range(extended_periods + 1):
         period_date = acquisition_date + relativedelta(months=period)
 
         # === REVENUE ===
@@ -571,7 +574,9 @@ def generate_cash_flows(
     total_capitalized_interest = 0.0
 
     # Second pass: calculate exit value with forward NOI and finalize cash flows
-    for i, data in enumerate(period_data):
+    # Only iterate through hold_period_months for output (not the extended periods)
+    for i in range(hold_period_months + 1):
+        data = period_data[i]
         period = data["period"]
         period_date = data["period_date"]
         noi = data["noi"]
@@ -591,19 +596,14 @@ def generate_cash_flows(
 
         if period == hold_period_months:
             # Calculate forward 12-month NOI for exit valuation
-            # Sum NOI from months (exit_month + 1) through (exit_month + 12)
-            # Since we only have data through exit_month, we extrapolate using current NOI
-            # This matches Excel's approach of using trailing NOI with escalation
+            # Excel formula: =SUM(OFFSET(Model!K69,0,X13+1,1,12))
+            # Sums ACTUAL NOI from months (exit_month + 1) through (exit_month + 12)
+            # We now have this data calculated in period_data (extended to month 132)
             forward_noi = 0.0
             for future_month in range(1, 13):
                 future_period = period + future_month
-                if future_period <= hold_period_months:
-                    # Use actual calculated NOI if available
-                    forward_noi += period_data[future_period]["noi"]
-                else:
-                    # Extrapolate with escalation
-                    escalation = (1 + rent_growth) ** (future_month / 12)
-                    forward_noi += noi * escalation
+                # Use actual calculated NOI from extended period_data
+                forward_noi += period_data[future_period]["noi"]
 
             gross_value = forward_noi / exit_cap_rate if exit_cap_rate > 0 else 0
             sales_costs_amount = gross_value * sales_cost_percent
