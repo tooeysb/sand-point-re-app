@@ -1455,9 +1455,210 @@ CREATE TABLE cash_flows (
 
 ---
 
-## 7. Appendix
+## 7. Excel Parity Specification
 
-### 7.1 Glossary
+This section provides the exact values from the source Excel model for validation and testing purposes. The web application must produce identical results to be considered accurate.
+
+### 7.1 Benchmark Input Values
+
+All monetary values are in thousands ($000s) unless otherwise noted.
+
+#### Property Information
+| Parameter | Excel Cell | Value |
+|-----------|------------|-------|
+| Land SF | F7 | 12,502 |
+| Building RSF | F8 | 9,932 |
+
+#### Acquisition & Timing
+| Parameter | Excel Cell | Value |
+|-----------|------------|-------|
+| Purchase Price | C13 | 41,500 ($000s) |
+| Closing Costs | C14 | 500 ($000s) |
+| Total Acquisition Cost | L22 | 42,342.96 ($000s) |
+| Hold Period | L9 | 120 months |
+| Stabilization Month | T7 | 77 |
+| Sale Month | X13 | 120 |
+
+#### Debt Structure
+| Parameter | Excel Cell | Value |
+|-----------|------------|-------|
+| LTC % | L23 | 40.0% |
+| Loan Amount | L24 | 16,937.18 ($000s) |
+| Fixed/Floating | L14 | 0 (Fixed) |
+| Interest Rate | J15 | 5.25% |
+| I/O Period | L18 | 120 months |
+| Amortization Period | L19 | 30 years |
+
+#### Equity Structure
+| Parameter | Calculation | Value |
+|-----------|-------------|-------|
+| Total Equity | L22 - L24 | 25,405.78 ($000s) |
+| LP Equity (90%) | Total × 0.90 | 22,865.20 ($000s) |
+| GP Equity (10%) | Total × 0.10 | 2,540.58 ($000s) |
+
+#### Rent Roll (Per-Tenant Detail)
+| Tenant | RSF | In-Place PSF | Market PSF | Lease End Month |
+|--------|-----|--------------|------------|-----------------|
+| Peter Millar (G/Fore) | 2,300 | $201.45 | $300.00 | Month 69 |
+| J McLaughlin | 1,868 | $200.47 | $300.00 | Month 50 |
+| Gucci | 5,950 | $187.65 | $300.00 | Month 210 |
+| **Total** | **10,118** | **$193.15** | **$300.00** | - |
+
+**CRITICAL**: The Excel model calculates rent on a **tenant-by-tenant** basis with:
+- In-place rent until lease expiration
+- Rollover to market rent at lease expiration
+- Annual escalation of 2.5%
+
+#### Operating Assumptions
+| Parameter | Excel Cell | Value |
+|-----------|------------|-------|
+| Market Rent PSF | T39 | $300/SF/year |
+| Rent Growth | D2 (Model) | 2.5% annual |
+| Expense Growth | D3 (Model) | 2.5% annual |
+| Fixed OpEx PSF | T54 | $36.00/SF |
+| Management Fee | T56 | 4% of revenue |
+| Property Tax Millage | S57 | 1.5% of purchase price |
+| Property Tax Annual | Calculated | $622,500 |
+| CapEx Reserve PSF | T59 | $5.00/SF |
+| General Vacancy | T51 | 0% |
+| Collection Loss | T52 | 0% |
+
+#### Exit Assumptions
+| Parameter | Excel Cell | Value |
+|-----------|------------|-------|
+| Exit Cap Rate | AA15 | 5.00% |
+| Sales Costs | Z17 | 1.00% |
+| Forward NOI (at exit) | AA14 | 3,079.84 ($000s) |
+| Gross Exit Value | AA16 | 61,596.78 ($000s) |
+| Net Exit Proceeds | AA18 | 60,980.82 ($000s) |
+
+#### Waterfall Structure
+| Tier | Pref Return | LP Split | GP Split | GP Promote |
+|------|-------------|----------|----------|------------|
+| Equity Split | - | 90% | 10% | - |
+| Hurdle I | 5% | 90% | 10% | 0% |
+| Hurdle II | 5% | 75% | 8.33% | 16.67% |
+| Hurdle III | 5% | 75% | 8.33% | 16.67% |
+| Final Split | - | 75% | 8.33% | 16.67% |
+| Compound Monthly | - | No (0) | - | - |
+
+### 7.2 Benchmark Output Values (Expected Results)
+
+These are the exact values the web application must produce to achieve parity.
+
+#### Unleveraged Returns
+| Metric | Excel Cell | Value |
+|--------|------------|-------|
+| Profit | I82 | 42,252.65 ($000s) |
+| Investment | I83 | 42,004.22 ($000s) |
+| Multiple | I84 | 2.01x |
+| IRR | I85 | **8.57%** |
+
+#### Leveraged Returns
+| Metric | Excel Cell | Value |
+|--------|------------|-------|
+| Profit | I187 | 33,014.57 ($000s) |
+| Investment | I188 | 25,405.78 ($000s) |
+| Multiple | I189 | 2.30x |
+| IRR | I190 | **10.09%** |
+
+#### LP Returns (from Waterfall)
+| Metric | Excel Cell | Value |
+|--------|------------|-------|
+| Investment | I124 | 22,865.20 ($000s) |
+| Total Return | I123 | 26,639.96 ($000s) |
+| Multiple | I125 | 2.17x |
+| IRR | I126 | **9.39%** |
+
+#### GP Returns (from Waterfall)
+| Metric | Excel Cell | Value |
+|--------|------------|-------|
+| Investment | I140 | 2,540.58 ($000s) |
+| Total Return | I139 | 6,374.62 ($000s) |
+| Multiple | I142 | 3.51x |
+| IRR | I141 | **15.02%** |
+
+### 7.3 Benchmark Intermediate Values
+
+Use these values to validate intermediate calculations.
+
+#### Month 2 (First Operating Month) Values
+| Item | Excel Cell | Value ($000s) |
+|------|------------|---------------|
+| Space A Revenue | L46 | 38.69 |
+| Space B Revenue | L47 | 31.27 |
+| Space C Revenue | L48 | 93.24 |
+| Total Revenue | L56 | 261.09 |
+| Fixed OpEx | L61 | 30.42 |
+| Management Fee | L64 | 10.44 |
+| Property Taxes | L65 | 51.88 |
+| CapEx Reserve | L66 | 4.22 |
+| Total OpEx | L67 | 102.12 |
+| NOI | L72 | 158.97 |
+| Interest Expense | L122 | 73.09 |
+| Debt Service | L123 | 73.09 |
+| Unleveraged CF | L81 | 158.97 |
+| Leveraged CF | L186 | 85.89 |
+
+#### Month 120 (Exit Month) Values
+| Item | Excel Cell | Value ($000s) |
+|------|------------|---------------|
+| NOI | EA72 | 247.80 |
+| Exit Proceeds | EA74 | 60,980.82 |
+| Unleveraged CF | EA81 | 61,228.62 |
+| Leveraged CF | EA186 | 44,215.91 |
+
+#### Annual Totals
+| Item | Value ($000s) |
+|------|---------------|
+| Year 1 NOI | 1,762.83 |
+| Total 10-Year NOI | 23,271.83 |
+| Total Unleveraged CF | 42,252.65 |
+| Total Leveraged CF | 33,014.57 |
+
+### 7.4 Key Implementation Gaps
+
+The following items require implementation changes to achieve Excel parity:
+
+#### 1. Tenant-by-Tenant Rent Calculation
+**Current**: Uniform rent calculation using weighted average
+**Required**: Per-tenant calculation with:
+- Individual in-place rents
+- Individual lease expiration dates
+- Rollover to market rent at expiration
+- Monthly escalation factor: `(1 + 0.025)^(month/12)`
+
+#### 2. Debt Calculation (LTC)
+**Current**: May use incorrect base for LTC calculation
+**Required**: LTC = 40% of Total Acquisition Cost ($42,342.96K)
+- Loan Amount = $16,937.18K
+- Interest = 5.25% (not 5.00%)
+- Full I/O for 120 months
+
+#### 3. Property Tax Calculation
+**Current**: May use direct input
+**Required**: Property Tax = Purchase Price × 1.5% = $41,500K × 0.015 = $622.5K/year
+
+#### 4. Exit Value Calculation
+**Current**: Simple forward NOI / cap rate
+**Required**: Forward 12-month NOI at month 120 = $3,079.84K
+- Gross Value = $61,596.78K
+- Net Proceeds = Gross × (1 - 1%) = $60,980.82K
+
+### 7.5 Tolerance Thresholds for Parity Testing
+
+| Metric | Acceptable Variance |
+|--------|---------------------|
+| IRR | ± 0.05% (5 basis points) |
+| Multiple | ± 0.01x |
+| Cash Flows | ± 0.1% or $1K |
+| NOI | ± 0.1% or $1K |
+
+---
+
+## 8. Appendix
+
+### 8.1 Glossary
 
 | Term | Definition |
 |------|------------|
@@ -1473,7 +1674,7 @@ CREATE TABLE cash_flows (
 | **Promote** | GP's share of profits above preferred return hurdles |
 | **Pref** | Preferred Return - Minimum return to investors before profit split |
 
-### 7.2 Formula Reference
+### 8.2 Formula Reference
 
 **Monthly Rent Calculation:**
 ```
@@ -1504,7 +1705,7 @@ NPV(r) = Σ CF_t / (1+r)^t = 0
 Solve for r iteratively
 ```
 
-### 7.3 Sample API Endpoints
+### 8.3 Sample API Endpoints
 
 ```
 GET    /api/v1/properties

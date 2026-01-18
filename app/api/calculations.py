@@ -178,12 +178,19 @@ async def calculate_cashflows(inputs: CashFlowInput):
             for t in inputs.tenants
         ]
 
+    # Convert monetary values from full dollars to $000s for the cashflow module
+    # The cashflow module expects ALL monetary values in $000s
+    purchase_price_000s = inputs.purchase_price / 1000
+    closing_costs_000s = inputs.closing_costs / 1000
+    loan_amount_000s = (inputs.loan_amount or 0) / 1000 if inputs.loan_amount else None
+    property_tax_000s = inputs.property_tax_amount / 1000
+
     # Calculate monthly cash flows
     monthly_cfs = cashflow.generate_cash_flows(
         acquisition_date=inputs.acquisition_date,
         hold_period_months=inputs.hold_period_months,
-        purchase_price=inputs.purchase_price,
-        closing_costs=inputs.closing_costs,
+        purchase_price=purchase_price_000s,
+        closing_costs=closing_costs_000s,
         total_sf=inputs.total_sf,
         in_place_rent_psf=inputs.in_place_rent_psf,
         market_rent_psf=inputs.market_rent_psf,
@@ -191,12 +198,12 @@ async def calculate_cashflows(inputs: CashFlowInput):
         vacancy_rate=inputs.vacancy_rate,
         fixed_opex_psf=inputs.fixed_opex_psf,
         management_fee_percent=inputs.management_fee_percent,
-        property_tax_amount=inputs.property_tax_amount,
+        property_tax_amount=property_tax_000s,
         capex_reserve_psf=inputs.capex_reserve_psf,
         expense_growth=inputs.expense_growth,
         exit_cap_rate=inputs.exit_cap_rate,
         sales_cost_percent=inputs.sales_cost_percent,
-        loan_amount=inputs.loan_amount,
+        loan_amount=loan_amount_000s,
         interest_rate=inputs.interest_rate,
         io_months=inputs.io_months,
         amortization_years=inputs.amortization_years,
@@ -234,7 +241,8 @@ async def calculate_cashflows(inputs: CashFlowInput):
 
     # Use leveraged cash flows for waterfall if we have debt, otherwise unleveraged
     project_cf = leveraged_cf if (inputs.loan_amount and inputs.loan_amount > 0) else unleveraged_cf
-    total_equity = inputs.purchase_price + inputs.closing_costs - (inputs.loan_amount or 0)
+    # Total equity in $000s (consistent with cash flows)
+    total_equity = purchase_price_000s + closing_costs_000s - (loan_amount_000s or 0)
 
     if total_equity > 0:
         try:

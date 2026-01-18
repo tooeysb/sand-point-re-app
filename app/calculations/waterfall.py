@@ -98,6 +98,8 @@ def calculate_waterfall_distributions(
     tiers: Optional[List[WaterfallTier]] = None,
     final_split: Optional[WaterfallTier] = None,
     compound_monthly: bool = False,
+    # Backward compatibility aliases
+    hurdles: Optional[List[WaterfallTier]] = None,  # Alias for tiers
 ) -> List[Dict]:
     """
     Calculate waterfall distributions matching Excel 225 Worth Ave model.
@@ -126,10 +128,24 @@ def calculate_waterfall_distributions(
     Returns:
         List of distribution records with detailed breakdowns by tier
     """
+    # Handle backward compatibility: hurdles is alias for tiers
+    if tiers is None and hurdles is not None:
+        tiers = hurdles
     if tiers is None:
         tiers = DEFAULT_WATERFALL_TIERS
+
+    # Handle final_split as dict (backward compatibility) or WaterfallTier
     if final_split is None:
         final_split = DEFAULT_FINAL_SPLIT
+    elif isinstance(final_split, dict):
+        # Convert dict to WaterfallTier for backward compatibility
+        final_split = WaterfallTier(
+            name="Final Split",
+            pref_return=0.0,
+            lp_split=final_split.get("lp_split", 0.75),
+            gp_split=final_split.get("gp_split", 0.0833),
+            gp_promote=final_split.get("gp_promote", 0.1667),
+        )
 
     distributions = []
 
