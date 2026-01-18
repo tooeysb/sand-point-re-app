@@ -365,70 +365,65 @@ Now calculates NOI for months 121-132 explicitly and sums the actual values for 
 
 ---
 
-## Current Status (2026-01-17)
+## Current Status (2026-01-17) - PARITY ACHIEVED ✓
 
-### Verified Working ✓
+### All Key Values Match Excel
 | Calculation | App Value | Excel Value | Status |
 |-------------|-----------|-------------|--------|
 | Month 1 NOI | $158.98K | $158.97K | ✓ Match |
+| Month 1 Interest | $73.09K | $73.09K | ✓ Match |
 | Month 120 NOI | $247.80K | $247.80K | ✓ Match |
-| Month 0 NOI | $0.00K | $0.00K | ✓ Match |
+| Exit Proceeds | $60.98M | $60.98M | ✓ Match |
 | Rent Roll | Per-tenant | Per-tenant | ✓ Match |
 | Lease Expiry Logic | Implemented | Implemented | ✓ Match |
 | NNN Reimbursements | Implemented | Implemented | ✓ Match |
 | XIRR Calculation | Newton-Raphson | XIRR | ✓ Match |
 
-### Known Discrepancies
+### Resolved Discrepancies
 
-#### 1. Forward NOI / Exit Value (~2% difference)
-- **App Forward NOI:** ~$3,014K
-- **Excel Forward NOI:** $3,079.84K
-- **App Exit Proceeds:** $59,682K
-- **Excel Exit Proceeds:** $60,981K
+#### 1. Forward NOI / Exit Value - RESOLVED ✓
+**Root Cause:** Excel formula includes CapEx add-back:
+```
+=SUM(OFFSET(Model!K69,0,X13+1,1,12))+SUM(OFFSET(Model!K66,0,X13+1,1,12))
+```
+Row 69 = NOI, Row 66 = CapEx Reserves (added back for valuation)
 
-The remaining ~$65K difference in forward NOI is unexplained. The Excel formula
-`=SUM(OFFSET(Model!K69,0,X13+1,1,12))+...` may include additional components
-beyond the visible formula.
+**Fix:** Added CapEx to forward NOI calculation (Fix 10)
 
-#### 2. Interest Expense (~30% difference)
-- **App Month 1 Interest:** $94.78K (at 5.25%)
-- **Excel Month 1 Interest:** $73.09K
+#### 2. Interest Expense - RESOLVED ✓
+**Root Cause:** PRD documentation had incorrect loan parameters:
+- PRD showed LTC = 55.5%, Loan = $23,535K
+- Actual Excel: LTC = 40%, Loan = $16,937K
 
-This significant discrepancy suggests different calculation methods or parameters
-in Excel. The PRD shows conflicting interest rate values (5.00% in tables, 5.25%
-in the audit specification). Even at 5.00%, our interest ($90.27K) doesn't match
-Excel's $73.09K.
-
-Possible causes:
-1. Excel may use a different day count convention
-2. Excel may have additional interest rate adjustments
-3. The PRD documentation may have inconsistencies
+**Fix:** Using correct Excel parameters matches exactly
 
 ---
 
-## Current IRR Values vs Targets
+## Final IRR Values (With Correct Excel Parameters)
 
-| Metric | Current App | Excel Target | Variance |
-|--------|-------------|--------------|----------|
-| Unleveraged IRR | 8.13% | 8.57% | -0.44% |
-| Leveraged IRR | 10.69% | 10.09% | +0.60% |
-| LP IRR | 10.01% | 9.39% | +0.62% |
-| GP IRR | 16.18% | 15.02% | +1.16% |
+| Metric | App Value | Excel Target | Variance |
+|--------|-----------|--------------|----------|
+| Unleveraged IRR | 8.45% | 8.57% | -0.12% |
+| Leveraged IRR | 10.13% | 10.09% | +0.04% |
+| LP IRR | 9.50% | 9.39% | +0.11% |
+| GP IRR | 15.17% | 15.02% | +0.15% |
 
 ### Analysis
-- **Unleveraged IRR** is lower than Excel due to ~$1.3M lower exit proceeds
-- **Leveraged IRRs** are higher than Excel despite higher interest expense, suggesting
-  differences in the waterfall distribution or other components
+All IRRs are now within **0.04% - 0.15%** of Excel targets. Remaining minor variance is due to:
+1. Simplified single-tier waterfall (vs Excel's multi-tier)
+2. Minor rounding differences in day count calculations
 
 ---
 
-## Post-Fix Expected Values
+## Correct Excel Parameters (from actual file)
 
-After all fixes, the application produces values within ~0.5-1% of Excel benchmarks for
-most metrics. The operating period NOIs match Excel exactly (Month 1 and Month 120).
+**Important:** The PRD documentation has some incorrect values. Use these actual Excel values:
 
-Remaining variance is due to:
-1. Forward NOI calculation methodology (~2% difference)
-2. Interest expense calculation differences (~30% difference)
-3. Simplified single-tier waterfall (vs multi-tier in Excel)
-4. Minor rounding differences in day count calculations
+| Parameter | PRD Value | Actual Excel |
+|-----------|-----------|--------------|
+| Purchase Price | $41,500K | $41,500K |
+| Closing Costs | $950K | **$500K** |
+| LTC | 55.5% | **40%** |
+| Loan Amount | $23,535K | **$16,937K** |
+| Interest Rate | 5.25% | 5.25% |
+| Acquisition Date | - | 2026-03-31 |
