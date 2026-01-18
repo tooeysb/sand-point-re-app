@@ -1973,18 +1973,21 @@ function modelEditor() {
                 };
             });
 
+            // Convert monetary values from full dollars to $000s for API
+            const toThousands = (val) => (val || 0) / 1000;
+
             const response = await fetch('/api/calculate/cashflows', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     acquisition_date: this.scenario.acquisition_date, hold_period_months: this.scenario.hold_period_months,
-                    purchase_price: this.scenario.purchase_price, closing_costs: this.scenario.closing_costs,
+                    purchase_price: toThousands(this.scenario.purchase_price), closing_costs: toThousands(this.scenario.closing_costs),
                     total_sf: totalSF || this.assumptions.total_sf, in_place_rent_psf: inPlaceRent,
                     market_rent_psf: this.assumptions.market_rent_psf, rent_growth: this.assumptions.revenue_growth,
                     vacancy_rate: this.assumptions.vacancy_rate, fixed_opex_psf: this.assumptions.fixed_opex_psf,
-                    management_fee_percent: this.assumptions.management_fee_percent, property_tax_amount: this.assumptions.property_tax_amount,
+                    management_fee_percent: this.assumptions.management_fee_percent, property_tax_amount: toThousands(this.assumptions.property_tax_amount),
                     capex_reserve_psf: this.assumptions.capex_reserve_psf, expense_growth: this.assumptions.expense_growth,
                     exit_cap_rate: this.scenario.exit_cap_rate, sales_cost_percent: this.scenario.sales_cost_percent,
-                    loan_amount: loanAmount, interest_rate: this.loans[0]?.fixed_rate || 0.05,
+                    loan_amount: toThousands(loanAmount), interest_rate: this.loans[0]?.fixed_rate || 0.05,
                     io_months: this.loans[0]?.io_months || 120, amortization_years: this.loans[0]?.amortization_years || 30,
                     tenants: tenants.length > 0 ? tenants : null,
                     lp_share: this.waterfall.lp_share, gp_share: this.waterfall.gp_share, pref_return: this.waterfall.pref_return,
