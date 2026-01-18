@@ -353,20 +353,44 @@ def calculate_scenario_returns(scenario: Scenario, db: Session) -> dict:
         primary_amort_years = primary_loan.amortization_years or 30
 
     # Convert values from full dollars to $000s for the cashflow module
-    # The cashflow module expects purchase_price, closing_costs, loan_amount in $000s
-    # But property_tax_amount is expected in full dollars (module divides by 1000 internally)
+    # The cashflow module expects ALL monetary values in $000s
     purchase_price_000s = (scenario.purchase_price or 0) / 1000
     closing_costs_000s = (scenario.closing_costs or 0) / 1000
     loan_amount_000s = total_loan_amount / 1000
-    property_tax_full = op_assumptions.get("property_tax_amount", 0)  # Keep in full dollars
+    property_tax_000s = op_assumptions.get("property_tax_amount", 0) / 1000  # Convert to $000s
+
+    # Build tenants array for tenant-by-tenant calculation with lease expiry logic
+    tenant_list = None
+    if leases:
+        tenant_list = []
+        for lease in leases:
+            if lease.rsf and lease.rsf > 0 and not lease.is_vacant:
+                # Calculate lease_end_month as months from acquisition date
+                lease_end_month = scenario.hold_period_months or 120  # Default to hold period
+                if lease.lease_end:
+                    months_diff = (
+                        (lease.lease_end.year - scenario.acquisition_date.year) * 12
+                        + (lease.lease_end.month - scenario.acquisition_date.month)
+                    )
+                    lease_end_month = max(0, months_diff)
+
+                tenant_list.append(
+                    cashflow.Tenant(
+                        name=lease.tenant_name or "Tenant",
+                        rsf=lease.rsf,
+                        in_place_rent_psf=lease.base_rent_psf or 0,
+                        market_rent_psf=op_assumptions.get("market_rent_psf", 300),
+                        lease_end_month=lease_end_month,
+                    )
+                )
 
     # Log input parameters for debugging
     logger.info(
         f"Calculating returns for scenario {scenario.id}: "
         f"total_sf={total_sf}, in_place_rent={in_place_rent}, "
         f"purchase_price={purchase_price_000s} ($000s), closing_costs={closing_costs_000s} ($000s), "
-        f"loan_amount={loan_amount_000s} ($000s), property_tax={property_tax_full} (full $), "
-        f"exit_cap={scenario.exit_cap_rate}"
+        f"loan_amount={loan_amount_000s} ($000s), property_tax={property_tax_000s} ($000s), "
+        f"exit_cap={scenario.exit_cap_rate}, tenants={len(tenant_list) if tenant_list else 0}"
     )
 
     # Generate dates
@@ -375,8 +399,7 @@ def calculate_scenario_returns(scenario: Scenario, db: Session) -> dict:
     )
 
     # Generate cash flows
-    # Note: purchase_price, closing_costs, loan_amount in $000s
-    # property_tax_amount in full dollars (module converts internally)
+    # Note: ALL monetary values in $000s
     # rent/expense PSF values in $/SF (module converts internally)
     monthly_cfs = cashflow.generate_cash_flows(
         acquisition_date=scenario.acquisition_date,
@@ -390,7 +413,7 @@ def calculate_scenario_returns(scenario: Scenario, db: Session) -> dict:
         vacancy_rate=op_assumptions.get("vacancy_rate", 0),
         fixed_opex_psf=op_assumptions.get("fixed_opex_psf", 36),
         management_fee_percent=op_assumptions.get("management_fee_percent", 0.04),
-        property_tax_amount=property_tax_full,
+        property_tax_amount=property_tax_000s,
         capex_reserve_psf=op_assumptions.get("capex_reserve_psf", 5),
         expense_growth=op_assumptions.get("expense_growth", 0.025),
         exit_cap_rate=scenario.exit_cap_rate or 0.05,
@@ -399,6 +422,7 @@ def calculate_scenario_returns(scenario: Scenario, db: Session) -> dict:
         interest_rate=primary_rate,
         io_months=primary_io_months,
         amortization_years=primary_amort_years,
+        tenants=tenant_list,
     )
 
     # Extract cash flow arrays
