@@ -87,18 +87,10 @@ async def health_check():
 
 
 # === Auth Page Routes ===
-
-
-@app.get("/auth/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    """Render the login page."""
-    return templates.TemplateResponse(request=request, name="auth/login.html")
-
-
-@app.get("/auth/register", response_class=HTMLResponse)
-async def register_page(request: Request):
-    """Render the registration page."""
-    return templates.TemplateResponse(request=request, name="auth/register.html")
+# NOTE: /auth/login and /auth/register are no longer served directly.
+# All authentication flows go through the Portal SSO middleware.
+# The routes below redirect to the app root, which the SSO middleware
+# will intercept and redirect to Portal if the user is unauthenticated.
 
 
 @app.get("/auth/forgot-password", response_class=HTMLResponse)

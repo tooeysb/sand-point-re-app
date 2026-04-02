@@ -4,7 +4,7 @@ Authentication API endpoints.
 
 import os
 from datetime import datetime, timedelta
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import jwt as pyjwt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -32,21 +32,27 @@ async def sso_callback(
     db: Session = Depends(get_db),
 ):
     """Receive SSO JWT from HTH Corp Portal and create a local session."""
+    portal_sso_url = os.environ.get("PORTAL_SSO_URL", "https://www.hth-corp.com/auth/sso-silent")
+    frontend_url = os.environ.get("FRONTEND_URL", "")
+
+    # Build a return_to URL that points back to this app's root
+    sso_retry_url = f"{portal_sso_url}?return_to={quote(frontend_url or '/')}"
+
     if not token:
-        return RedirectResponse(url="/auth/login", status_code=302)
+        return RedirectResponse(url=sso_retry_url, status_code=302)
 
     sso_secret = os.environ.get("SSO_JWT_SECRET", "")
     if not sso_secret:
-        return RedirectResponse(url="/auth/login", status_code=302)
+        return RedirectResponse(url=sso_retry_url, status_code=302)
 
     try:
         payload = pyjwt.decode(token, sso_secret, algorithms=["HS256"])
     except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError):
-        return RedirectResponse(url="/auth/login", status_code=302)
+        return RedirectResponse(url=sso_retry_url, status_code=302)
 
     email = payload.get("email")
     if not email:
-        return RedirectResponse(url="/auth/login", status_code=302)
+        return RedirectResponse(url=sso_retry_url, status_code=302)
 
     # Find or create local user
     user = db.query(User).filter(User.email == email.lower()).first()

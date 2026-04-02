@@ -18,8 +18,6 @@ from app.auth.jwt import decode_token
 PUBLIC_PREFIXES = (
     "/api/auth/sso",
     "/auth/sso",
-    "/auth/login",
-    "/auth/register",
     "/health",
     "/static",
     "/favicon.ico",
