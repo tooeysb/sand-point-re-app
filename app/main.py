@@ -9,11 +9,14 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+import os
+
 from app.api import router as api_router
 from app.api.admin.users import router as admin_users_router
 from app.api.auth import router as auth_router
 from app.config import get_settings
 from app.db.database import init_db
+from app.middleware.sso import SSOMiddleware
 
 settings = get_settings()
 
@@ -41,6 +44,10 @@ app.mount("/static", StaticFiles(directory="app/ui/static"), name="static")
 
 # Set up templates
 templates = Jinja2Templates(directory="app/ui/templates")
+
+# SSO middleware (only if SSO_JWT_SECRET is configured)
+if os.environ.get("SSO_JWT_SECRET"):
+    app.add_middleware(SSOMiddleware)
 
 # Include API routes
 app.include_router(api_router, prefix="/api")

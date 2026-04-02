@@ -2,9 +2,13 @@
 Authentication API endpoints.
 """
 
+import os
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+import jwt as pyjwt
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
@@ -19,6 +23,72 @@ from app.services.email import get_email_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
+
+
+@router.get("/sso")
+async def sso_callback(
+    token: str = Query(""),
+    return_to: str = Query("/"),
+    db: Session = Depends(get_db),
+):
+    """Receive SSO JWT from HTH Corp Portal and create a local session."""
+    if not token:
+        return RedirectResponse(url="/auth/login", status_code=302)
+
+    sso_secret = os.environ.get("SSO_JWT_SECRET", "")
+    if not sso_secret:
+        return RedirectResponse(url="/auth/login", status_code=302)
+
+    try:
+        payload = pyjwt.decode(token, sso_secret, algorithms=["HS256"])
+    except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError):
+        return RedirectResponse(url="/auth/login", status_code=302)
+
+    email = payload.get("email")
+    if not email:
+        return RedirectResponse(url="/auth/login", status_code=302)
+
+    # Find or create local user
+    user = db.query(User).filter(User.email == email.lower()).first()
+    if not user:
+        user = User(
+            email=email.lower(),
+            first_name=email.split("@")[0],
+            hashed_password=hash_password(os.urandom(32).hex()),
+            email_verified=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # Create local access token
+    token_data = {"sub": str(user.id), "email": user.email}
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+
+    # Validate return_to domain
+    parsed = urlparse(return_to)
+    if parsed.hostname and parsed.hostname != "model.hth-corp.com":
+        return_to = "/"
+
+    response = RedirectResponse(url=return_to, status_code=302)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.app_env == "production",
+        samesite="lax",
+        max_age=settings.jwt_access_token_expire_minutes * 60,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.app_env == "production",
+        samesite="lax",
+        max_age=settings.jwt_refresh_token_expire_days * 24 * 60 * 60,
+    )
+    return response
 
 
 # === Pydantic Schemas ===
