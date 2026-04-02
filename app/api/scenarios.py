@@ -9,9 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import get_current_user
 from app.calculations import cashflow, irr, waterfall
 from app.db.database import get_db
-from app.db.models import Lease, Loan, Property, Scenario
+from app.db.models import Lease, Loan, Property, Scenario, User
 
 logger = logging.getLogger(__name__)
 
@@ -583,6 +584,7 @@ async def list_scenarios(
     property_id: str | None = None,
     skip: int = 0,
     limit: int = 100,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """List all scenarios, optionally filtered by property."""
@@ -603,6 +605,7 @@ async def list_scenarios(
 @router.post("/", status_code=201)
 async def create_scenario(
     scenario_data: ScenarioCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Create a new scenario with leases and loans."""
@@ -726,6 +729,7 @@ async def create_scenario(
 @router.get("/{scenario_id}")
 async def get_scenario(
     scenario_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get a scenario by ID with full details."""
@@ -743,6 +747,7 @@ async def get_scenario(
 async def update_scenario(
     scenario_id: str,
     scenario_data: ScenarioUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Update a scenario."""
@@ -881,6 +886,7 @@ async def update_scenario(
 @router.delete("/{scenario_id}")
 async def delete_scenario(
     scenario_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Soft delete a scenario."""
@@ -900,6 +906,7 @@ async def delete_scenario(
 @router.post("/{scenario_id}/calculate")
 async def calculate_scenario(
     scenario_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Recalculate return metrics for a scenario."""
@@ -924,6 +931,7 @@ async def calculate_scenario(
 async def get_scenario_cashflows(
     scenario_id: str,
     period_type: str = "monthly",
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get cash flow projections for a scenario."""
@@ -1073,6 +1081,7 @@ async def get_scenario_cashflows(
 async def add_lease(
     scenario_id: str,
     lease_data: LeaseInput,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Add a lease to a scenario."""
@@ -1123,6 +1132,7 @@ async def add_lease(
 async def remove_lease(
     scenario_id: str,
     lease_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Remove a lease from a scenario."""
@@ -1152,6 +1162,7 @@ async def remove_lease(
 async def add_loan(
     scenario_id: str,
     loan_data: LoanInput,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Add a loan to a scenario."""
@@ -1201,6 +1212,7 @@ async def add_loan(
 async def remove_loan(
     scenario_id: str,
     loan_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Remove a loan from a scenario."""

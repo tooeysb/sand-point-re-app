@@ -66,9 +66,9 @@ async def sso_callback(
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
 
-    # Validate return_to domain
+    # Validate return_to — only allow relative paths to prevent open redirect
     parsed = urlparse(return_to)
-    if parsed.hostname and parsed.hostname != "model.hth-corp.com":
+    if parsed.scheme or parsed.netloc:
         return_to = "/"
 
     response = RedirectResponse(url=return_to, status_code=302)

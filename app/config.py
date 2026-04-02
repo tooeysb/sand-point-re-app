@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # JWT Configuration
-    jwt_secret_key: str = "CHANGE-ME-IN-PRODUCTION-USE-LONG-RANDOM-STRING"
+    jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 30
     jwt_refresh_token_expire_days: int = 7
@@ -63,4 +63,10 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
-    return Settings()
+    settings = Settings()
+    if not settings.jwt_secret_key:
+        raise ValueError(
+            "JWT_SECRET_KEY environment variable is required. "
+            "Set it to a long, random secret string."
+        )
+    return settings

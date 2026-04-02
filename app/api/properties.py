@@ -8,8 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import get_current_user
 from app.db.database import get_db
-from app.db.models import Property
+from app.db.models import Property, User
 
 router = APIRouter()
 
@@ -108,6 +109,7 @@ async def list_properties(
     skip: int = 0,
     limit: int = 100,
     property_type: str | None = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """List all properties with optional filtering."""
@@ -128,6 +130,7 @@ async def list_properties(
 @router.post("/", response_model=PropertyResponse, status_code=201)
 async def create_property(
     property_data: PropertyCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Create a new property."""
@@ -157,6 +160,7 @@ async def create_property(
 @router.get("/{property_id}", response_model=PropertyResponse)
 async def get_property(
     property_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get a property by ID."""
@@ -174,6 +178,7 @@ async def get_property(
 async def update_property(
     property_id: str,
     property_data: PropertyUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Update a property."""
@@ -198,6 +203,7 @@ async def update_property(
 @router.delete("/{property_id}")
 async def delete_property(
     property_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Soft delete a property."""
@@ -218,6 +224,7 @@ async def delete_property(
 @router.get("/{property_id}/scenarios")
 async def list_property_scenarios(
     property_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """List all scenarios for a property."""

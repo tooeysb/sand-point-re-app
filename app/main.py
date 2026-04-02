@@ -2,7 +2,6 @@
 Main FastAPI application entry point.
 """
 
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -52,9 +51,8 @@ templates = Jinja2Templates(directory="app/ui/templates")
 # Correlation ID middleware (always enabled — outermost middleware runs first)
 app.add_middleware(CorrelationIDMiddleware)
 
-# SSO middleware (only if SSO_JWT_SECRET is configured)
-if os.environ.get("SSO_JWT_SECRET"):
-    app.add_middleware(SSOMiddleware)
+# SSO middleware (always enabled — rejects requests if SSO_JWT_SECRET is missing)
+app.add_middleware(SSOMiddleware)
 
 # Include API routes
 app.include_router(api_router, prefix="/api")

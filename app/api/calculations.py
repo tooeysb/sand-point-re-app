@@ -7,11 +7,13 @@ Used by HTMX for real-time updates.
 
 from datetime import date
 
-from fastapi import APIRouter
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
 
+from app.auth.dependencies import get_current_user
 from app.calculations import cashflow, irr, waterfall
 from app.core.logging import get_logger
+from app.db.models import User
 
 logger = get_logger(__name__)
 
@@ -63,7 +65,7 @@ class CashFlowInput(BaseModel):
 
     # Timing
     acquisition_date: date
-    hold_period_months: int = 120
+    hold_period_months: int = Field(default=120, ge=1, le=600)
     stabilization_month: int = 77
 
     # Acquisition
@@ -79,7 +81,7 @@ class CashFlowInput(BaseModel):
 
     # Tenant-level rent roll (optional, for per-tenant calculations)
     # If provided, uses tenant-by-tenant rent with lease expiry logic
-    tenants: list[TenantInput] | None = None
+    tenants: list[TenantInput] | None = Field(default=None, max_length=100)
 
     # Expenses
     fixed_opex_psf: float = 36.0
@@ -151,7 +153,7 @@ class CashFlowResponse(BaseModel):
 
 
 @router.post("/cashflows", response_model=CashFlowResponse)
-async def calculate_cashflows(inputs: CashFlowInput):
+async def calculate_cashflows(inputs: CashFlowInput, current_user: User = Depends(get_current_user)):
     """Calculate full cash flow projections and return metrics."""
     logger.info(
         "Calculating cashflows: purchase_price=%.2f, hold=%d months, exit_cap=%.4f, tenants=%d",
@@ -348,8 +350,8 @@ async def calculate_cashflows(inputs: CashFlowInput):
 class IRRInput(BaseModel):
     """Input for IRR calculation."""
 
-    cash_flows: list[float]
-    dates: list[date] | None = None
+    cash_flows: list[float] = Field(max_length=600)
+    dates: list[date] | None = Field(default=None, max_length=600)
 
 
 class IRRResponse(BaseModel):
@@ -362,7 +364,7 @@ class IRRResponse(BaseModel):
 
 
 @router.post("/irr", response_model=IRRResponse)
-async def calculate_irr_endpoint(inputs: IRRInput):
+async def calculate_irr_endpoint(inputs: IRRInput, current_user: User = Depends(get_current_user)):
     """Calculate IRR for given cash flows."""
     from fastapi import HTTPException
 
@@ -393,11 +395,11 @@ class AmortizationInput(BaseModel):
     annual_rate: float
     amortization_years: int
     io_months: int = 0
-    total_months: int = 120
+    total_months: int = Field(default=120, ge=1, le=600)
 
 
 @router.post("/amortization")
-async def calculate_amortization(inputs: AmortizationInput):
+async def calculate_amortization(inputs: AmortizationInput, current_user: User = Depends(get_current_user)):
     """Generate loan amortization schedule."""
 
     from app.calculations.amortization import generate_amortization_schedule
