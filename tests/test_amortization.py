@@ -138,9 +138,7 @@ class TestGenerateAmortizationSchedule:
             start_date=date(2025, 1, 1),
         )
         for row in schedule:
-            assert row["payment"] == pytest.approx(
-                row["interest"] + row["principal"], abs=0.02
-            )
+            assert row["payment"] == pytest.approx(row["interest"] + row["principal"], abs=0.02)
 
     def test_io_balance_stays_flat(self):
         """During I/O, ending balance should equal beginning balance."""

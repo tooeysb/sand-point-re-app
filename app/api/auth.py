@@ -47,7 +47,9 @@ async def sso_callback(
 
     try:
         payload = pyjwt.decode(
-            token, sso_secret, algorithms=["HS256"],
+            token,
+            sso_secret,
+            algorithms=["HS256"],
             options={"verify_aud": False},
         )
     except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError):

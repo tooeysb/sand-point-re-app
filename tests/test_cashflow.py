@@ -328,9 +328,16 @@ class TestGenerateCashFlows:
 class TestAnnualizeCashFlows:
     def test_annualize_basic(self):
         monthly = [
-            {"period": i, "potential_revenue": 100.0, "effective_revenue": 95.0,
-             "total_expenses": 50.0, "noi": 45.0, "debt_service": 10.0,
-             "unleveraged_cash_flow": 35.0, "leveraged_cash_flow": 25.0}
+            {
+                "period": i,
+                "potential_revenue": 100.0,
+                "effective_revenue": 95.0,
+                "total_expenses": 50.0,
+                "noi": 45.0,
+                "debt_service": 10.0,
+                "unleveraged_cash_flow": 35.0,
+                "leveraged_cash_flow": 25.0,
+            }
             for i in range(13)
         ]
         annual = annualize_cash_flows(monthly)

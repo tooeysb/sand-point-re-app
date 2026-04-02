@@ -262,5 +262,9 @@ class TestDefaults:
         assert DEFAULT_WATERFALL_TIERS[0].gp_promote == 0.0
 
     def test_default_final_split_sums_near_one(self):
-        total = DEFAULT_FINAL_SPLIT.lp_split + DEFAULT_FINAL_SPLIT.gp_split + DEFAULT_FINAL_SPLIT.gp_promote
+        total = (
+            DEFAULT_FINAL_SPLIT.lp_split
+            + DEFAULT_FINAL_SPLIT.gp_split
+            + DEFAULT_FINAL_SPLIT.gp_promote
+        )
         assert total == pytest.approx(1.0, abs=0.001)

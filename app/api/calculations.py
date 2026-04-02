@@ -153,7 +153,9 @@ class CashFlowResponse(BaseModel):
 
 
 @router.post("/cashflows", response_model=CashFlowResponse)
-async def calculate_cashflows(inputs: CashFlowInput, current_user: User = Depends(get_current_user)):
+async def calculate_cashflows(
+    inputs: CashFlowInput, current_user: User = Depends(get_current_user)
+):
     """Calculate full cash flow projections and return metrics."""
     logger.info(
         "Calculating cashflows: purchase_price=%.2f, hold=%d months, exit_cap=%.4f, tenants=%d",
@@ -399,7 +401,9 @@ class AmortizationInput(BaseModel):
 
 
 @router.post("/amortization")
-async def calculate_amortization(inputs: AmortizationInput, current_user: User = Depends(get_current_user)):
+async def calculate_amortization(
+    inputs: AmortizationInput, current_user: User = Depends(get_current_user)
+):
     """Generate loan amortization schedule."""
 
     from app.calculations.amortization import generate_amortization_schedule
