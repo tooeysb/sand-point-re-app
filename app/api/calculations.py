@@ -10,7 +10,7 @@ from datetime import date
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user_optional
 from app.calculations import cashflow, irr, waterfall
 from app.core.logging import get_logger
 from app.db.models import User
@@ -154,7 +154,7 @@ class CashFlowResponse(BaseModel):
 
 @router.post("/cashflows", response_model=CashFlowResponse)
 async def calculate_cashflows(
-    inputs: CashFlowInput, current_user: User = Depends(get_current_user)
+    inputs: CashFlowInput, current_user: User | None = Depends(get_current_user_optional)
 ):
     """Calculate full cash flow projections and return metrics."""
     logger.info(
@@ -366,7 +366,9 @@ class IRRResponse(BaseModel):
 
 
 @router.post("/irr", response_model=IRRResponse)
-async def calculate_irr_endpoint(inputs: IRRInput, current_user: User = Depends(get_current_user)):
+async def calculate_irr_endpoint(
+    inputs: IRRInput, current_user: User | None = Depends(get_current_user_optional)
+):
     """Calculate IRR for given cash flows."""
     from fastapi import HTTPException
 
@@ -402,7 +404,8 @@ class AmortizationInput(BaseModel):
 
 @router.post("/amortization")
 async def calculate_amortization(
-    inputs: AmortizationInput, current_user: User = Depends(get_current_user)
+    inputs: AmortizationInput,
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     """Generate loan amortization schedule."""
 
